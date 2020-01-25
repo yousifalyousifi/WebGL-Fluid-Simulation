@@ -34,7 +34,11 @@ function notNull(value, msg) {
 }
 const canvas = document.getElementsByTagName('canvas')[0];
 resizeCanvas();
-let config = {
+const NamedColors = {
+    Black: { r: 0, g: 0, b: 0 },
+    NotionMarketingBackground: { r: 255, g: 254, b: 252 },
+};
+const config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 1024,
     CAPTURE_RESOLUTION: 512,
@@ -49,7 +53,7 @@ let config = {
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
-    BACK_COLOR: { r: 0, g: 0, b: 0 },
+    BACK_COLOR: NamedColors.NotionMarketingBackground,
     TRANSPARENT: false,
     BLOOM: true,
     BLOOM_ITERATIONS: 8,
