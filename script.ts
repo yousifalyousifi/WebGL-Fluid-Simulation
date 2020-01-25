@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import * as dat from 'dat.gui'
+declare const dat: typeof import('dat.gui')
 
 'use strict';
 
@@ -1273,7 +1273,7 @@ function render (target: FBO | null) {
         applyBloom(dye.read, bloom);
     if (config.SUNRAYS) {
         applySunrays(dye.read, dye.write, sunrays);
-        blur(sunrays, sunraysTemp, 1);
+        blurFBO(sunrays, sunraysTemp, 1);
     }
 
     if (target == null || !config.TRANSPARENT) {
@@ -1388,7 +1388,7 @@ function applySunrays (source: FBO, mask: FBO, destination: FBO) {
     blit(destination.fbo);
 }
 
-function blur (target: FBO, temp: FBO, iterations: number) {
+function blurFBO(target: FBO, temp: FBO, iterations: number) {
     blurProgram.bind();
     for (let i = 0; i < iterations; i++) {
         gl.uniform2f(blurProgram.uniforms.texelSize, target.texelSizeX, 0.0);
