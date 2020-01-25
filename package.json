@@ -1,6 +1,7 @@
 {
   "devDependencies": {
     "@types/dat.gui": "^0.7.5",
+    "prettier": "^1.19.1",
     "typescript": "^3.7.5"
   },
   "dependencies": {
