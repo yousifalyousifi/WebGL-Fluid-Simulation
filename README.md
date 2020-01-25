@@ -1,6 +1,17 @@
-# WebGL Fluid Simulation
+# WebGL Fluid Simulation (Typescript)
 
-[Play here](https://paveldogreat.github.io/WebGL-Fluid-Simulation/)
+This repo is a fork of Pavel Dobryakov's WebGL fluid simulation.
+
+My plan is:
+
+1. Convert it to typescript, so it's easier to work with.
+2. Modularize the code, so it's easier to add new inputs.
+3. Drive simulation inputs from an event bus.
+4. Connect a music FFT to the event bus, so we can visualize musics!
+
+---
+
+[Play here](https://justjake.github.io/WebGL-Fluid-Simulation/)
 
 <img src="/screenshot.jpg?raw=true" width="880">
 
