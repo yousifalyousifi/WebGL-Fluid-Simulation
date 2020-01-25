@@ -78,7 +78,7 @@ class pointerPrototype{
   deltaY = 0;
   down = false;
   moved = false;
-  color: [number, number, number] | Color = [30, 0, 300]; // TODO: is this used? How?
+  color: Color = [30, 0, 300] as any; // TODO: is this used? How?
 }
 
 let pointers: pointerPrototype[] = [];
@@ -316,7 +316,7 @@ function clamp01 (input: number) {
 
 function textureToCanvas (texture: Uint8Array, width: number, height: number) {
     let captureCanvas = document.createElement('canvas');
-    let ctx = captureCanvas.getContext('2d');
+    let ctx = notNull(captureCanvas.getContext('2d'), 'canvas.getContext(2d)')
     captureCanvas.width = width;
     captureCanvas.height = height;
 
@@ -917,13 +917,13 @@ const blit = (() => {
 
 let dye: DoubleFBO;
 let velocity: DoubleFBO;
-let divergence;
-let curl;
-let pressure;
-let bloom;
-let bloomFramebuffers = [];
-let sunrays;
-let sunraysTemp;
+let divergence: FBO;
+let curl: FBO;
+let pressure: DoubleFBO;
+let bloom: FBO;
+let bloomFramebuffers: FBO[] = [];
+let sunrays: FBO;
+let sunraysTemp: FBO;
 
 let ditheringTexture: Texture = createTextureAsync('LDR_LLL1_0.png');
 
@@ -1055,16 +1055,16 @@ function createDoubleFBO (w: number, h: number, internalFormat: number, format: 
         height: h,
         texelSizeX: fbo1.texelSizeX,
         texelSizeY: fbo1.texelSizeY,
-        get read () {
+        get read (): FBO {
             return fbo1;
         },
-        set read (value) {
+        set read (value: FBO) {
             fbo1 = value;
         },
-        get write () {
+        get write (): FBO {
             return fbo2;
         },
-        set write (value) {
+        set write (value: FBO) {
             fbo2 = value;
         },
         swap () {
@@ -1190,7 +1190,7 @@ function updateColors (dt: number) {
 
 function applyInputs () {
     if (splatStack.length > 0)
-        multipleSplats(splatStack.pop());
+        multipleSplats(splatStack.pop() || 0);
 
     pointers.forEach(p => {
         if (p.moved) {
@@ -1200,7 +1200,7 @@ function applyInputs () {
     });
 }
 
-function step (dt) {
+function step (dt: number) {
     gl.disable(gl.BLEND);
     gl.viewport(0, 0, velocity.width, velocity.height);
 
@@ -1268,7 +1268,7 @@ function step (dt) {
     dye.swap();
 }
 
-function render (target) {
+function render (target: FBO | null) {
     if (config.BLOOM)
         applyBloom(dye.read, bloom);
     if (config.SUNRAYS) {
@@ -1296,35 +1296,36 @@ function render (target) {
     drawDisplay(fbo, width, height);
 }
 
-function drawColor (fbo, color) {
+function drawColor (fbo: WebGLFramebuffer | null, color: Color) {
     colorProgram.bind();
     gl.uniform4f(colorProgram.uniforms.color, color.r, color.g, color.b, 1);
     blit(fbo);
 }
 
-function drawCheckerboard (fbo) {
+function drawCheckerboard (fbo: WebGLFramebuffer | null) {
     checkerboardProgram.bind();
     gl.uniform1f(checkerboardProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     blit(fbo);
 }
 
-function drawDisplay (fbo, width, height) {
+function drawDisplay (fbo: WebGLFramebuffer | null, width: number, height: number) {
     displayMaterial.bind();
+    const uniforms = notNull(displayMaterial.uniforms)
     if (config.SHADING)
-        gl.uniform2f(displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
-    gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
+        gl.uniform2f(uniforms.texelSize, 1.0 / width, 1.0 / height);
+    gl.uniform1i(uniforms.uTexture, dye.read.attach(0));
     if (config.BLOOM) {
-        gl.uniform1i(displayMaterial.uniforms.uBloom, bloom.attach(1));
-        gl.uniform1i(displayMaterial.uniforms.uDithering, ditheringTexture.attach(2));
+        gl.uniform1i(uniforms.uBloom, bloom.attach(1));
+        gl.uniform1i(uniforms.uDithering, ditheringTexture.attach(2));
         let scale = getTextureScale(ditheringTexture, width, height);
-        gl.uniform2f(displayMaterial.uniforms.ditherScale, scale.x, scale.y);
+        gl.uniform2f(uniforms.ditherScale, scale.x, scale.y);
     }
     if (config.SUNRAYS)
-        gl.uniform1i(displayMaterial.uniforms.uSunrays, sunrays.attach(3));
+        gl.uniform1i(uniforms.uSunrays, sunrays.attach(3));
     blit(fbo);
 }
 
-function applyBloom (source, destination) {
+function applyBloom (source: FBO, destination: FBO) {
     if (bloomFramebuffers.length < 2)
         return;
 
@@ -1373,7 +1374,7 @@ function applyBloom (source, destination) {
     blit(destination.fbo);
 }
 
-function applySunrays (source, mask, destination) {
+function applySunrays (source: FBO, mask: FBO, destination: FBO) {
     gl.disable(gl.BLEND);
     sunraysMaskProgram.bind();
     gl.uniform1i(sunraysMaskProgram.uniforms.uTexture, source.attach(0));
@@ -1387,7 +1388,7 @@ function applySunrays (source, mask, destination) {
     blit(destination.fbo);
 }
 
-function blur (target, temp, iterations) {
+function blur (target: FBO, temp: FBO, iterations: number) {
     blurProgram.bind();
     for (let i = 0; i < iterations; i++) {
         gl.uniform2f(blurProgram.uniforms.texelSize, target.texelSizeX, 0.0);
@@ -1400,13 +1401,13 @@ function blur (target, temp, iterations) {
     }
 }
 
-function splatPointer (pointer) {
+function splatPointer (pointer: pointerPrototype) {
     let dx = pointer.deltaX * config.SPLAT_FORCE;
     let dy = pointer.deltaY * config.SPLAT_FORCE;
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
 }
 
-function multipleSplats (amount) {
+function multipleSplats (amount: number) {
     for (let i = 0; i < amount; i++) {
         const color = generateColor();
         color.r *= 10.0;
@@ -1420,7 +1421,7 @@ function multipleSplats (amount) {
     }
 }
 
-function splat (x, y, dx, dy, color) {
+function splat (x: number, y: number, dx: number, dy: number, color: Color) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
@@ -1438,7 +1439,7 @@ function splat (x, y, dx, dy, color) {
     dye.swap();
 }
 
-function correctRadius (radius) {
+function correctRadius (radius: number) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1)
         radius *= aspectRatio;
@@ -1530,17 +1531,17 @@ function updatePointerMoveData (pointer: pointerPrototype, posX: number, posY: n
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
 }
 
-function updatePointerUpData (pointer) {
+function updatePointerUpData (pointer: pointerPrototype) {
     pointer.down = false;
 }
 
-function correctDeltaX (delta) {
+function correctDeltaX (delta: number) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio < 1) delta *= aspectRatio;
     return delta;
 }
 
-function correctDeltaY (delta) {
+function correctDeltaY (delta: number) {
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1) delta /= aspectRatio;
     return delta;
