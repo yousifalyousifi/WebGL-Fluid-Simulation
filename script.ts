@@ -2,6 +2,7 @@
 MIT License
 
 Copyright (c) 2017 Pavel Dobryakov
+Typescript fork (c) 2020 Jake Teton-Landis
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +24,6 @@ SOFTWARE.
 */
 
 declare const dat: typeof import('dat.gui')
-
-'use strict'
 
 function safeParseInt(x: number) {
   return parseInt(x.toString())
@@ -68,7 +67,7 @@ let config = {
   SUNRAYS_WEIGHT: 1.0,
 }
 
-class pointerPrototype {
+class Pointer {
   id = -1
   texcoordX = 0
   texcoordY = 0
@@ -78,12 +77,12 @@ class pointerPrototype {
   deltaY = 0
   down = false
   moved = false
-  color: Color = [30, 0, 300] as any // TODO: is this used? How?
+  color: Color = { r: 0, g: 0, b: 0 }
 }
 
-let pointers: pointerPrototype[] = []
+let pointers: Pointer[] = []
 let splatStack: number[] = []
-pointers.push(new pointerPrototype())
+pointers.push(new Pointer())
 
 const { gl, ext } = getWebGLContext(canvas)
 
@@ -270,69 +269,35 @@ function startGUI() {
     .add(
       {
         fun: () => {
-          window.open('https://github.com/PavelDoGreat/WebGL-Fluid-Simulation')
+          window.open('https://github.com/justjake/WebGL-Fluid-Simulation')
           //ga('send', 'event', 'link button', 'github');
         },
       },
       'fun'
     )
-    .name('Github') as GUIControllerListItem
+    .name('Typescript') as GUIControllerListItem
   github.__li.className = 'cr function bigFont'
   github.__li.style.borderLeft = '3px solid #8C8C8C'
   let githubIcon = document.createElement('span')
   github.domElement.parentElement!.appendChild(githubIcon)
   githubIcon.className = 'icon github'
 
-  let twitter = gui
+  let original = gui
     .add(
       {
         fun: () => {
-          //ga('send', 'event', 'link button', 'twitter');
-          window.open('https://twitter.com/PavelDoGreat')
+          window.open('https://github.com/PavelDoGreat/WebGL-Fluid-Simulation')
+          //ga('send', 'event', 'link button', 'github');
         },
       },
       'fun'
     )
-    .name('Twitter') as GUIControllerListItem
-  twitter.__li.className = 'cr function bigFont'
-  twitter.__li.style.borderLeft = '3px solid #8C8C8C'
-  let twitterIcon = document.createElement('span')
-  twitter.domElement.parentElement!.appendChild(twitterIcon)
-  twitterIcon.className = 'icon twitter'
-
-  let discord = gui
-    .add(
-      {
-        fun: () => {
-          //ga('send', 'event', 'link button', 'discord');
-          window.open('https://discordapp.com/invite/CeqZDDE')
-        },
-      },
-      'fun'
-    )
-    .name('Discord') as GUIControllerListItem
-  discord.__li.className = 'cr function bigFont'
-  discord.__li.style.borderLeft = '3px solid #8C8C8C'
-  let discordIcon = document.createElement('span')
-  discord.domElement.parentElement!.appendChild(discordIcon)
-  discordIcon.className = 'icon discord'
-
-  let app = gui
-    .add(
-      {
-        fun: () => {
-          //ga('send', 'event', 'link button', 'app');
-          window.open('http://onelink.to/5b58bn')
-        },
-      },
-      'fun'
-    )
-    .name('Check out mobile app') as GUIControllerListItem
-  app.__li.className = 'cr function appBigFont'
-  app.__li.style.borderLeft = '3px solid #00FF7F'
-  let appIcon = document.createElement('span')
-  app.domElement.parentElement!.appendChild(appIcon)
-  appIcon.className = 'icon app'
+    .name('Original') as GUIControllerListItem
+  original.__li.className = 'cr function bigFont'
+  original.__li.style.borderLeft = '3px solid #8C8C8C'
+  let originalGithubIcon = document.createElement('span')
+  original.domElement.parentElement!.appendChild(originalGithubIcon)
+  originalGithubIcon.className = 'icon github'
 
   if (isMobile()) gui.close()
 }
@@ -1601,7 +1566,7 @@ function blurFBO(target: FBO, temp: FBO, iterations: number) {
   }
 }
 
-function splatPointer(pointer: pointerPrototype) {
+function splatPointer(pointer: Pointer) {
   let dx = pointer.deltaX * config.SPLAT_FORCE
   let dy = pointer.deltaY * config.SPLAT_FORCE
   splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color)
@@ -1649,7 +1614,7 @@ canvas.addEventListener('mousedown', e => {
   let posX = scaleByPixelRatio(e.offsetX)
   let posY = scaleByPixelRatio(e.offsetY)
   let pointer = pointers.find(p => p.id == -1)
-  if (pointer == null) pointer = new pointerPrototype()
+  if (pointer == null) pointer = new Pointer()
   updatePointerDownData(pointer, -1, posX, posY)
 })
 
@@ -1668,7 +1633,7 @@ window.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', e => {
   e.preventDefault()
   const touches = e.targetTouches
-  while (touches.length >= pointers.length) pointers.push(new pointerPrototype())
+  while (touches.length >= pointers.length) pointers.push(new Pointer())
   for (let i = 0; i < touches.length; i++) {
     let posX = scaleByPixelRatio(touches[i].pageX)
     let posY = scaleByPixelRatio(touches[i].pageY)
@@ -1706,7 +1671,7 @@ window.addEventListener('keydown', e => {
   if (e.key === ' ') splatStack.push(safeParseInt(Math.random() * 20) + 5)
 })
 
-function updatePointerDownData(pointer: pointerPrototype, id: number, posX: number, posY: number) {
+function updatePointerDownData(pointer: Pointer, id: number, posX: number, posY: number) {
   pointer.id = id
   pointer.down = true
   pointer.moved = false
@@ -1719,7 +1684,7 @@ function updatePointerDownData(pointer: pointerPrototype, id: number, posX: numb
   pointer.color = generateColor()
 }
 
-function updatePointerMoveData(pointer: pointerPrototype, posX: number, posY: number) {
+function updatePointerMoveData(pointer: Pointer, posX: number, posY: number) {
   pointer.prevTexcoordX = pointer.texcoordX
   pointer.prevTexcoordY = pointer.texcoordY
   pointer.texcoordX = posX / canvas.width
@@ -1729,7 +1694,7 @@ function updatePointerMoveData(pointer: pointerPrototype, posX: number, posY: nu
   pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0
 }
 
-function updatePointerUpData(pointer: pointerPrototype) {
+function updatePointerUpData(pointer: Pointer) {
   pointer.down = false
 }
 

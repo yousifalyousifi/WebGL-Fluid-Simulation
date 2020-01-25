@@ -3,6 +3,7 @@
 MIT License
 
 Copyright (c) 2017 Pavel Dobryakov
+Typescript fork (c) 2020 Jake Teton-Landis
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +23,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-'use strict';
 function safeParseInt(x) {
     return parseInt(x.toString());
 }
@@ -61,7 +61,7 @@ let config = {
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
 };
-class pointerPrototype {
+class Pointer {
     constructor() {
         this.id = -1;
         this.texcoordX = 0;
@@ -72,12 +72,12 @@ class pointerPrototype {
         this.deltaY = 0;
         this.down = false;
         this.moved = false;
-        this.color = [30, 0, 300]; // TODO: is this used? How?
+        this.color = { r: 0, g: 0, b: 0 };
     }
 }
 let pointers = [];
 let splatStack = [];
-pointers.push(new pointerPrototype());
+pointers.push(new Pointer());
 const { gl, ext } = getWebGLContext(canvas);
 if (isMobile()) {
     config.DYE_RESOLUTION = 512;
@@ -90,9 +90,17 @@ if (!ext.supportLinearFiltering) {
 }
 startGUI();
 function getWebGLContext(canvas) {
-    const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
+    const params = {
+        alpha: true,
+        depth: false,
+        stencil: false,
+        antialias: false,
+        preserveDrawingBuffer: false,
+    };
     const gl2 = canvas.getContext('webgl2', params);
-    const gl = gl2 || canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);
+    const gl = gl2 ||
+        canvas.getContext('webgl', params) ||
+        canvas.getContext('experimental-webgl', params);
     const isWebGL2 = !!gl2;
     let halfFloat = undefined;
     let supportLinearFiltering;
@@ -128,11 +136,12 @@ function getWebGLContext(canvas) {
             formatRG,
             formatR,
             halfFloatTexType,
-            supportLinearFiltering
-        }
+            supportLinearFiltering,
+        },
     };
 }
 function getSupportedFormat(gl, internalFormat, format, type) {
+    /** TODO: | null */
     if (!supportRenderTextureFormat(gl, internalFormat, format, type)) {
         switch (internalFormat) {
             case gl.R16F:
@@ -164,66 +173,81 @@ function supportRenderTextureFormat(gl, internalFormat, format, type) {
 }
 function startGUI() {
     var gui = new dat.GUI({ width: 300 });
-    gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name('quality').onFinishChange(initFramebuffers);
-    gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
+    gui
+        .add(config, 'DYE_RESOLUTION', { high: 1024, medium: 512, low: 256, 'very low': 128 })
+        .name('quality')
+        .onFinishChange(initFramebuffers);
+    gui
+        .add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 })
+        .name('sim resolution')
+        .onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
     gui.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('velocity diffusion');
     gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
-    gui.add(config, 'CURL', 0, 50).name('vorticity').step(1);
+    gui
+        .add(config, 'CURL', 0, 50)
+        .name('vorticity')
+        .step(1);
     gui.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
-    gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
+    gui
+        .add(config, 'SHADING')
+        .name('shading')
+        .onFinishChange(updateKeywords);
     gui.add(config, 'COLORFUL').name('colorful');
-    gui.add(config, 'PAUSED').name('paused').listen();
-    gui.add({ fun: () => {
-            splatStack.push(safeParseInt((Math.random() * 20)) + 5);
-        } }, 'fun').name('Random splats');
+    gui
+        .add(config, 'PAUSED')
+        .name('paused')
+        .listen();
+    gui
+        .add({
+        fun: () => {
+            splatStack.push(safeParseInt(Math.random() * 20) + 5);
+        },
+    }, 'fun')
+        .name('Random splats');
     let bloomFolder = gui.addFolder('Bloom');
-    bloomFolder.add(config, 'BLOOM').name('enabled').onFinishChange(updateKeywords);
+    bloomFolder
+        .add(config, 'BLOOM')
+        .name('enabled')
+        .onFinishChange(updateKeywords);
     bloomFolder.add(config, 'BLOOM_INTENSITY', 0.1, 2.0).name('intensity');
     bloomFolder.add(config, 'BLOOM_THRESHOLD', 0.0, 1.0).name('threshold');
     let sunraysFolder = gui.addFolder('Sunrays');
-    sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(updateKeywords);
+    sunraysFolder
+        .add(config, 'SUNRAYS')
+        .name('enabled')
+        .onFinishChange(updateKeywords);
     sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.3, 1.0).name('weight');
     let captureFolder = gui.addFolder('Capture');
     captureFolder.addColor(config, 'BACK_COLOR').name('background color');
     captureFolder.add(config, 'TRANSPARENT').name('transparent');
     captureFolder.add({ fun: captureScreenshot }, 'fun').name('take screenshot');
-    let github = gui.add({ fun: () => {
-            window.open('https://github.com/PavelDoGreat/WebGL-Fluid-Simulation');
+    let github = gui
+        .add({
+        fun: () => {
+            window.open('https://github.com/justjake/WebGL-Fluid-Simulation');
             //ga('send', 'event', 'link button', 'github');
-        } }, 'fun').name('Github');
+        },
+    }, 'fun')
+        .name('Typescript');
     github.__li.className = 'cr function bigFont';
     github.__li.style.borderLeft = '3px solid #8C8C8C';
     let githubIcon = document.createElement('span');
     github.domElement.parentElement.appendChild(githubIcon);
     githubIcon.className = 'icon github';
-    let twitter = gui.add({ fun: () => {
-            //ga('send', 'event', 'link button', 'twitter');
-            window.open('https://twitter.com/PavelDoGreat');
-        } }, 'fun').name('Twitter');
-    twitter.__li.className = 'cr function bigFont';
-    twitter.__li.style.borderLeft = '3px solid #8C8C8C';
-    let twitterIcon = document.createElement('span');
-    twitter.domElement.parentElement.appendChild(twitterIcon);
-    twitterIcon.className = 'icon twitter';
-    let discord = gui.add({ fun: () => {
-            //ga('send', 'event', 'link button', 'discord');
-            window.open('https://discordapp.com/invite/CeqZDDE');
-        } }, 'fun').name('Discord');
-    discord.__li.className = 'cr function bigFont';
-    discord.__li.style.borderLeft = '3px solid #8C8C8C';
-    let discordIcon = document.createElement('span');
-    discord.domElement.parentElement.appendChild(discordIcon);
-    discordIcon.className = 'icon discord';
-    let app = gui.add({ fun: () => {
-            //ga('send', 'event', 'link button', 'app');
-            window.open('http://onelink.to/5b58bn');
-        } }, 'fun').name('Check out mobile app');
-    app.__li.className = 'cr function appBigFont';
-    app.__li.style.borderLeft = '3px solid #00FF7F';
-    let appIcon = document.createElement('span');
-    app.domElement.parentElement.appendChild(appIcon);
-    appIcon.className = 'icon app';
+    let original = gui
+        .add({
+        fun: () => {
+            window.open('https://github.com/PavelDoGreat/WebGL-Fluid-Simulation');
+            //ga('send', 'event', 'link button', 'github');
+        },
+    }, 'fun')
+        .name('Original');
+    original.__li.className = 'cr function bigFont';
+    original.__li.style.borderLeft = '3px solid #8C8C8C';
+    let originalGithubIcon = document.createElement('span');
+    original.domElement.parentElement.appendChild(originalGithubIcon);
+    originalGithubIcon.className = 'icon github';
     if (isMobile())
         gui.close();
 }
@@ -350,7 +374,6 @@ function compileShader(type, source, keywords) {
         throw gl.getShaderInfoLog(shader);
     return shader;
 }
-;
 function addKeywords(source, keywords) {
     if (keywords == null)
         return source;
@@ -924,7 +947,7 @@ function createFBO(w, h, internalFormat, format, type, param) {
             gl.activeTexture(gl.TEXTURE0 + id);
             gl.bindTexture(gl.TEXTURE_2D, texture);
             return id;
-        }
+        },
     };
 }
 function createDoubleFBO(w, h, internalFormat, format, type, param) {
@@ -951,7 +974,7 @@ function createDoubleFBO(w, h, internalFormat, format, type, param) {
             let temp = fbo1;
             fbo1 = fbo2;
             fbo2 = temp;
-        }
+        },
     };
 }
 function resizeFBO(target, w, h, internalFormat, format, type, param) {
@@ -988,7 +1011,7 @@ function createTextureAsync(url) {
             gl.activeTexture(gl.TEXTURE0 + id);
             gl.bindTexture(gl.TEXTURE_2D, texture);
             return id;
-        }
+        },
     };
     let image = new Image();
     image.onload = () => {
@@ -1003,11 +1026,11 @@ function createTextureAsync(url) {
 function updateKeywords() {
     let displayKeywords = [];
     if (config.SHADING)
-        displayKeywords.push("SHADING");
+        displayKeywords.push('SHADING');
     if (config.BLOOM)
-        displayKeywords.push("BLOOM");
+        displayKeywords.push('BLOOM');
     if (config.SUNRAYS)
-        displayKeywords.push("SUNRAYS");
+        displayKeywords.push('SUNRAYS');
     displayMaterial.setKeywords(displayKeywords);
 }
 updateKeywords();
@@ -1283,7 +1306,7 @@ canvas.addEventListener('mousedown', e => {
     let posY = scaleByPixelRatio(e.offsetY);
     let pointer = pointers.find(p => p.id == -1);
     if (pointer == null)
-        pointer = new pointerPrototype();
+        pointer = new Pointer();
     updatePointerDownData(pointer, -1, posX, posY);
 });
 canvas.addEventListener('mousemove', e => {
@@ -1301,7 +1324,7 @@ canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const touches = e.targetTouches;
     while (touches.length >= pointers.length)
-        pointers.push(new pointerPrototype());
+        pointers.push(new Pointer());
     for (let i = 0; i < touches.length; i++) {
         let posX = scaleByPixelRatio(touches[i].pageX);
         let posY = scaleByPixelRatio(touches[i].pageY);
@@ -1387,35 +1410,41 @@ function HSVtoRGB(h, s, v) {
     t = v * (1 - (1 - f) * s);
     switch (i % 6) {
         case 0:
-            r = v, g = t, b = p;
+            ;
+            (r = v), (g = t), (b = p);
             break;
         case 1:
-            r = q, g = v, b = p;
+            ;
+            (r = q), (g = v), (b = p);
             break;
         case 2:
-            r = p, g = v, b = t;
+            ;
+            (r = p), (g = v), (b = t);
             break;
         case 3:
-            r = p, g = q, b = v;
+            ;
+            (r = p), (g = q), (b = v);
             break;
         case 4:
-            r = t, g = p, b = v;
+            ;
+            (r = t), (g = p), (b = v);
             break;
         case 5:
-            r = v, g = p, b = q;
+            ;
+            (r = v), (g = p), (b = q);
             break;
     }
     return {
         r,
         g,
-        b
+        b,
     };
 }
 function normalizeColor(input) {
     let output = {
         r: input.r / 255,
         g: input.g / 255,
-        b: input.b / 255
+        b: input.b / 255,
     };
     return output;
 }
@@ -1423,7 +1452,7 @@ function wrap(value, min, max) {
     let range = max - min;
     if (range == 0)
         return min;
-    return (value - min) % range + min;
+    return ((value - min) % range) + min;
 }
 function getResolution(resolution) {
     let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
@@ -1439,7 +1468,7 @@ function getResolution(resolution) {
 function getTextureScale(texture, width, height) {
     return {
         x: width / texture.width,
-        y: height / texture.height
+        y: height / texture.height,
     };
 }
 function scaleByPixelRatio(input) {
@@ -1456,4 +1485,3 @@ function hashCode(s) {
     }
     return hash;
 }
-;
