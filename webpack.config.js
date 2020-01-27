@@ -18,4 +18,7 @@ module.exports = {
     filename: 'script.js',
     path: __dirname,
   },
+  node: {
+    fs: false,
+  }
 };

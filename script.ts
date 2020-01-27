@@ -24,6 +24,7 @@ SOFTWARE.
 */
 
 declare const dat: typeof import('dat.gui')
+import { SongPlayer } from './audio'
 
 function safeParseInt(x: number) {
   return parseInt(x.toString())
@@ -38,6 +39,8 @@ function notNull<T>(value: T, msg?: string): NonNullable<T> {
 
 const canvas = document.getElementsByTagName('canvas')[0]
 resizeCanvas()
+
+const songPlayer = new SongPlayer()
 
 const NamedColors = {
   Black: { r: 0, g: 0, b: 0 },
@@ -77,6 +80,7 @@ const config = {
   SUNRAYS: true,
   SUNRAYS_RESOLUTION: 196,
   SUNRAYS_WEIGHT: 1.0,
+  SOUNDCLOUD_SONG: 'https://soundcloud.com/coltongorg/floating',
 }
 
 class Pointer {
@@ -263,6 +267,17 @@ function startGUI() {
       'fun'
     )
     .name('Random splats')
+
+  gui
+    .add(
+      {
+        fun: () => {
+          songPlayer.setSoundcloudUrl('https://soundcloud.com/coltongorg/floating')
+        },
+      },
+      'fun'
+    )
+    .name('GOGO SOUND STUFF!')
 
   let bloomFolder = gui.addFolder('Bloom')
   bloomFolder

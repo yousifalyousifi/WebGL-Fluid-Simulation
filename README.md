@@ -61,7 +61,18 @@ http://hughsk.io/moire-1/
 https://www.npmjs.com/package/web-audio-analyser
 
 ```javascript
-
+  if (analyser) {
+    analyser.waveform(daudio)
+    for (var i = 0, n = 0; i < 512; i++) {
+      var o = faudio[n]
+      var N = (daudio[i] - 127)
+      faudio[n++] =
+      faudio[n++] =
+      faudio[n++] =
+      faudio[n++] = o + (N - o) * 0.0025
+    }
+    taudio.setPixels(naudio)
+  }
 ```
 
 https://www.npmjs.com/package/soundcloud-badge
