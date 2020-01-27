@@ -1,10 +1,19 @@
 {
+  "scripts": {
+    "watch": "webpack --watch",
+    "serve": "python -m SimpleHTTPServer"
+  },
   "devDependencies": {
     "@types/dat.gui": "^0.7.5",
     "prettier": "^1.19.1",
-    "typescript": "^3.7.5"
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.7.5",
+    "webpack": "^4.41.5",
+    "webpack-cli": "^3.3.10"
   },
   "dependencies": {
-    "dat.gui": "^0.7.6"
+    "dat.gui": "^0.7.6",
+    "soundcloud-badge": "^1.1.0",
+    "web-audio-analyser": "^2.0.1"
   }
 }
