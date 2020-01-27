@@ -36,10 +36,14 @@ const canvas = document.getElementsByTagName('canvas')[0];
 resizeCanvas();
 const NamedColors = {
     Black: { r: 0, g: 0, b: 0 },
+    Red: { r: 245, g: 0, b: 0 },
     NotionMarketingBackground: { r: 255, g: 254, b: 252 },
 };
+function dup(val) {
+    return JSON.parse(JSON.stringify(val));
+}
 const config = {
-    SIM_RESOLUTION: 128,
+    SIM_RESOLUTION: 512,
     DYE_RESOLUTION: 1024,
     CAPTURE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 1,
@@ -50,10 +54,12 @@ const config = {
     SPLAT_RADIUS: 0.25,
     SPLAT_FORCE: 6000,
     SHADING: true,
+    SPLAT_COLOR: dup(NamedColors.Red),
+    RANDOM_COLOR: true,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
-    BACK_COLOR: NamedColors.NotionMarketingBackground,
+    BACK_COLOR: dup(NamedColors.Black),
     TRANSPARENT: false,
     BLOOM: true,
     BLOOM_ITERATIONS: 8,
@@ -77,6 +83,7 @@ class Pointer {
         this.down = false;
         this.moved = false;
         this.color = { r: 0, g: 0, b: 0 };
+        this.colorUpdates = 0;
     }
 }
 let pointers = [];
@@ -178,11 +185,17 @@ function supportRenderTextureFormat(gl, internalFormat, format, type) {
 function startGUI() {
     var gui = new dat.GUI({ width: 300 });
     gui
-        .add(config, 'DYE_RESOLUTION', { high: 1024, medium: 512, low: 256, 'very low': 128 })
+        .add(config, 'DYE_RESOLUTION', {
+        ultra: 2048,
+        high: 1024,
+        medium: 512,
+        low: 256,
+        'very low': 128,
+    })
         .name('quality')
         .onFinishChange(initFramebuffers);
     gui
-        .add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 })
+        .add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256, '512': 512 })
         .name('sim resolution')
         .onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
@@ -197,7 +210,9 @@ function startGUI() {
         .add(config, 'SHADING')
         .name('shading')
         .onFinishChange(updateKeywords);
-    gui.add(config, 'COLORFUL').name('colorful');
+    gui.addColor(config, 'SPLAT_COLOR').name('Splat color');
+    gui.add(config, 'RANDOM_COLOR').name('Use random color');
+    gui.add(config, 'COLORFUL').name('Paint the rainbow');
     gui
         .add(config, 'PAUSED')
         .name('paused')
@@ -1018,6 +1033,7 @@ function createTextureAsync(url) {
         },
     };
     let image = new Image();
+    //image.crossOrigin = 'anonymous'
     image.onload = () => {
         obj.width = image.width;
         obj.height = image.height;
@@ -1037,6 +1053,7 @@ function updateKeywords() {
         displayKeywords.push('SUNRAYS');
     displayMaterial.setKeywords(displayKeywords);
 }
+// Main
 updateKeywords();
 initFramebuffers();
 multipleSplats(safeParseInt(Math.random() * 20) + 5);
@@ -1078,7 +1095,10 @@ function updateColors(dt) {
     if (colorUpdateTimer >= 1) {
         colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
         pointers.forEach(p => {
-            p.color = generateColor();
+            p.colorUpdates++;
+            if (p.colorUpdates > 2) {
+                p.color = generateColor();
+            }
         });
     }
 }
@@ -1283,21 +1303,31 @@ function multipleSplats(amount) {
         splat(x, y, dx, dy, color);
     }
 }
-function splat(x, y, dx, dy, color) {
+/**
+ * Splat some dye into the simulation.
+ * @param x Center X coordinate. Float from 0 (left) to 1 (right)
+ * @param y Center Y coordinate. Float form 0 (bottom) to 1 (top)
+ * @param dx Horizontal force vector element, in pixels. Positive -> left, negative -> right.
+ * @param dy Vertical force vector element, in pixels. Positive -> top, negative -> bottom.
+ * @param color Color. Using { r, g, b } values >1 creates a larger splat.
+ */
+function splat(x, y, dx, dy, color, radius) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, x, y);
     gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0.0);
-    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100.0));
+    gl.uniform1f(splatProgram.uniforms.radius, correctRadius((radius || config.SPLAT_RADIUS) / 100.0));
     blit(velocity.write.fbo);
     velocity.swap();
-    gl.viewport(0, 0, dye.width, dye.height);
-    gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
-    gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
-    blit(dye.write.fbo);
-    dye.swap();
+    if (color) {
+        gl.viewport(0, 0, dye.width, dye.height);
+        gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
+        gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
+        blit(dye.write.fbo);
+        dye.swap();
+    }
 }
 function correctRadius(radius) {
     let aspectRatio = canvas.width / canvas.height;
@@ -1372,7 +1402,13 @@ function updatePointerDownData(pointer, id, posX, posY) {
     pointer.prevTexcoordY = pointer.texcoordY;
     pointer.deltaX = 0;
     pointer.deltaY = 0;
-    pointer.color = generateColor();
+    pointer.colorUpdates = 0;
+    if (!config.RANDOM_COLOR) {
+        pointer.color = muteUIColor(config.SPLAT_COLOR);
+    }
+    else {
+        pointer.color = generateColor();
+    }
 }
 function updatePointerMoveData(pointer, posX, posY) {
     pointer.prevTexcoordX = pointer.texcoordX;
@@ -1452,6 +1488,15 @@ function normalizeColor(input) {
     };
     return output;
 }
+function tfColor(input, tf) {
+    let output = {
+        r: tf(input.r),
+        g: tf(input.g),
+        b: tf(input.b),
+    };
+    return output;
+}
+const muteUIColor = (color) => tfColor(color, x => x / 270 + 0.05);
 function wrap(value, min, max) {
     let range = max - min;
     if (range == 0)
