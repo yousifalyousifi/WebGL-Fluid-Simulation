@@ -62,6 +62,14 @@ Try it in a chrome debugger:
 
 `splat(0.5, 0.5, 500, 0, { r: 1, g: 0, b: 0 })`
 
+### Music theory approach to visualizers
+
+https://github.com/ccorcos/circle
+
+[![https://github.com/ccorcos/circle/raw/master/assets/linear-spread.png]](https://ccorcos.github.io/circle/?grid=true&mode=song&view=linear&overlap=false&sharpness=5.01&gain=1.00&hue=254.23&sweep=-36.65&radius=0.37&opacity=0.60)
+
+* Note: you need to click on the browser canvas ASAP after opening this link or Chrome will stop audio from working.
+
 ### Audio from Soundcloude / Audio source
 
 FFT stuff using Soundcloud and raw `new Audio()` API.
