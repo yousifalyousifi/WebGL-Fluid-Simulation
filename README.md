@@ -4,10 +4,14 @@ This repo is a fork of Pavel Dobryakov's WebGL fluid simulation.
 
 My plan is:
 
-1. Convert it to typescript, so it's easier to work with.
-2. Modularize the code, so it's easier to add new inputs.
-3. Drive simulation inputs from an event bus.
-4. Connect a music FFT to the event bus, so we can visualize musics!
+- [x] Convert it to typescript, so it's easier to work with.
+- [ ] Modularize the code, so it's easier to add new inputs.
+  - It's faily easy to drop some code into the update loop as it is.
+    I've decided not to rewrite things more.
+- [ ] Drive simulation inputs from an event bus.
+  - Going to do this last
+- [x] Add a soundcloud music source
+- [ ] Make some visualizers!
 
 ---
 
@@ -29,11 +33,18 @@ The code is available under the [MIT license](LICENSE)
 
 ---
 
+## Developing
+
+1. Install dependencies with `yarn install` or `npm install`
+2. Start webpack: `yarn watch` or `npm run watch`
+3. Start the server: `yarn serve` or `npm run serve`
+4. Open the server in your browser of choice.
+
 ## Notes
 
-Coordinate system puts 0, 0 in the bottom-left.
+The coordinate system puts 0, 0 in the bottom-left.
 
-A "splat" puts a hunk of dye of a specific color into the simulation.
+A "splat" puts a hunk of dye of a specific color into the simulation:
 
 ```
 /**
@@ -44,11 +55,12 @@ A "splat" puts a hunk of dye of a specific color into the simulation.
  * @param dy - Vertical force vector element, in pixels. Positive -> top, negative -> bottom.
  * @param color - Color. Using { r, g, b } values >1 creates a larger splat. (or a larger bloom?).
  */
-function splat(x: number, y: number, dx: number, dy: number, color: Color)
+function splat(x: number, y: number, dx: number, dy: number, color?: Color, radius?: number) {
 ```
 
-splat(0.5, 0.5, 500, 0, { r: 1, g: 0, b: 0 })
+Try it in a chrome debugger:
 
+`splat(0.5, 0.5, 500, 0, { r: 1, g: 0, b: 0 })`
 
 ### Audio from Soundcloude / Audio source
 

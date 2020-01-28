@@ -1,3 +1,10 @@
+// Forked because the original relied on require('fs'), which works ok in Bundler
+// but requires shenanigans in Webpack. It's easier just to inline the files as
+// backtick strings.
+//
+// We still keep soundcloud-badge as a package.json requirement so we
+// don't have to add its dependencies (lazy).
+
 var resolve = require('soundcloud-resolve')
 var fonts = require('google-fonts')
 var minstache = require('minstache')

@@ -2,7 +2,7 @@
  * Audio support
  */
 
-import createAnalyzer, { WebAudioAnalyzer } from 'web-audio-analyser'
+import createAnalyzer, { WebAudioAnalyser } from 'web-audio-analyser'
 import SoundcloudBadge, { SoundcloudBadgeOptions } from './soundcloud-badge'
 
 function SoundcloudBadgePromise(
@@ -23,10 +23,14 @@ function SoundcloudBadgePromise(
   })
 }
 
+const fftSize = 256
+
 export class SongPlayer {
   audio = new Audio()
   div: HTMLDivElement | undefined = undefined
-  analyzer: WebAudioAnalyzer | undefined = undefined
+  analyzer: WebAudioAnalyser | undefined = undefined
+  freq: AudioArrays | undefined
+  wav: AudioArrays | undefined
 
   constructor() {
     this.audio.crossOrigin = 'Anonymous'
@@ -62,7 +66,34 @@ export class SongPlayer {
 
     // Go
     if (!this.analyzer) {
-      this.analyzer = createAnalyzer(this.audio)
+      const analyzer = createAnalyzer(this.audio)
+      analyzer.analyser.fftSize = fftSize
+      console.log('freq bin count', analyzer.analyser.frequencyBinCount)
+      this.wav = new AudioArrays(analyzer.analyser.frequencyBinCount)
+      this.freq = new AudioArrays(analyzer.analyser.frequencyBinCount)
+      this.analyzer = analyzer
     }
+  }
+
+  update() {
+    if (this.analyzer && this.wav && this.freq) {
+      this.freq.swap()
+      this.analyzer.frequencies(this.freq.current)
+      this.wav.swap()
+      this.analyzer.waveform(this.wav.current)
+      return { wav: this.wav, freq: this.freq }
+    }
+    return undefined
+  }
+}
+
+export class AudioArrays {
+  constructor(public buckets: number) {}
+  current = new Uint8Array(this.buckets)
+  prev = new Uint8Array(this.buckets)
+  swap() {
+    const prev = this.current
+    this.current = prev
+    this.prev = prev
   }
 }

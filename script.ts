@@ -40,12 +40,17 @@ function notNull<T>(value: T, msg?: string): NonNullable<T> {
 const canvas = document.getElementsByTagName('canvas')[0]
 resizeCanvas()
 
-const songPlayer = new SongPlayer()
+var songPlayer = new SongPlayer()
+  // Expose for debugging since our globals are now hidden by Webpack's module wrapper
+  // from appearing on the window.
+;(window as any).songPlayer = songPlayer
 
-const NamedColors = {
+const Shortcuts = {
   Black: { r: 0, g: 0, b: 0 },
   Red: { r: 245, g: 0, b: 0 },
   NotionMarketingBackground: { r: 255, g: 254, b: 252 },
+  FloatSong: 'https://soundcloud.com/coltongorg/floating',
+  SimonSong: 'https://soundcloud.com/simonlast/session_74',
 }
 
 function dup<T>(val: T): T {
@@ -64,14 +69,14 @@ const config = {
   SPLAT_RADIUS: 0.25,
   SPLAT_FORCE: 6000,
   SHADING: true,
-  SPLAT_COLOR: dup(NamedColors.Red),
+  SPLAT_COLOR: dup(Shortcuts.Red),
   RANDOM_COLOR: true,
   COLORFUL: true,
   COLOR_UPDATE_SPEED: 10,
   PAUSED: false,
-  BACK_COLOR: dup(NamedColors.Black),
+  BACK_COLOR: dup(Shortcuts.Black),
   TRANSPARENT: false,
-  BLOOM: true,
+  BLOOM: false, // TRUE
   BLOOM_ITERATIONS: 8,
   BLOOM_RESOLUTION: 256,
   BLOOM_INTENSITY: 0.8,
@@ -80,7 +85,6 @@ const config = {
   SUNRAYS: true,
   SUNRAYS_RESOLUTION: 196,
   SUNRAYS_WEIGHT: 1.0,
-  SOUNDCLOUD_SONG: 'https://soundcloud.com/coltongorg/floating',
 }
 
 class Pointer {
@@ -272,12 +276,12 @@ function startGUI() {
     .add(
       {
         fun: () => {
-          songPlayer.setSoundcloudUrl('https://soundcloud.com/coltongorg/floating')
+          songPlayer.setSoundcloudUrl(Shortcuts.SimonSong)
         },
       },
       'fun'
     )
-    .name('GOGO SOUND STUFF!')
+    .name('Play Soundcloud Visualizer (WIP)')
 
   let bloomFolder = gui.addFolder('Bloom')
   bloomFolder
@@ -1361,6 +1365,7 @@ update()
 function update() {
   const dt = calcDeltaTime()
   if (resizeCanvas()) initFramebuffers()
+  applyVisualizer()
   updateColors(dt)
   applyInputs()
   if (!config.PAUSED) step(dt)
@@ -1411,6 +1416,26 @@ function applyInputs() {
       splatPointer(p)
     }
   })
+}
+
+/**
+ * Visualizer - added
+ */
+function applyVisualizer() {
+  const data = songPlayer.update()
+
+  if (!data) {
+    return
+  }
+
+  const freq = data.freq
+
+  // Draw?
+  for (let i = 0; i < freq.buckets; i++) {
+    const x = i / freq.buckets
+    const color = HSVtoRGB(x, 1.0, 1.0)
+    splat(x, 0, 0, freq.current[i] * 10, color, 0.01)
+  }
 }
 
 function step(dt: number) {
@@ -1654,6 +1679,8 @@ function splat(x: number, y: number, dx: number, dy: number, color?: Color, radi
     dye.swap()
   }
 }
+// Expose
+;(window as any).splat = splat
 
 function correctRadius(radius: number) {
   let aspectRatio = canvas.width / canvas.height
