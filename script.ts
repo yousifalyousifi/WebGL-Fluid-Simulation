@@ -58,14 +58,14 @@ function dup<T>(val: T): T {
 }
 
 const config = {
-  SIM_RESOLUTION: 512,
+  SIM_RESOLUTION: 256,
   DYE_RESOLUTION: 1024,
   CAPTURE_RESOLUTION: 512,
   DENSITY_DISSIPATION: 1,
   VELOCITY_DISSIPATION: 0.2,
   PRESSURE: 0.8,
   PRESSURE_ITERATIONS: 20,
-  CURL: 30,
+  CURL: 8,
   SPLAT_RADIUS: 0.25,
   SPLAT_FORCE: 6000,
   SHADING: true,
@@ -1358,19 +1358,45 @@ updateKeywords()
 initFramebuffers()
 multipleSplats(safeParseInt(Math.random() * 20) + 5)
 
-let lastUpdateTime = Date.now()
-let colorUpdateTimer = 0.0
-update()
+let fpsInterval: number;
+let startTime: number;
+let _now: number;
+let then: number;
+let elapsed:  number;
+let lastUpdateTime = Date.now();
+let colorUpdateTimer = 0.0;
+startAnimating(999);
 
-function update() {
-  const dt = calcDeltaTime()
-  if (resizeCanvas()) initFramebuffers()
-  applyVisualizer()
-  updateColors(dt)
-  applyInputs()
-  if (!config.PAUSED) step(dt)
-  render(null)
-  requestAnimationFrame(update)
+//Source: https://stackoverflow.com/a/19772220
+function startAnimating(fps: number) {
+    fpsInterval = 1000 / fps;
+    then = Date.now();
+    startTime = then;
+    update();
+}
+
+function update () {
+    _now = Date.now();
+    elapsed = _now - then;
+
+    // if enough time has elapsed, draw the next frame
+
+    if (elapsed > fpsInterval) {
+
+        // Get ready for next frame by setting then=_now, but also adjust for your
+        // specified fpsInterval not being a multiple of RAF's interval (16.7ms)
+        then = _now - (elapsed % fpsInterval);
+
+        // Put your drawing code here
+        const dt = calcDeltaTime()
+        if (resizeCanvas()) initFramebuffers()
+        applyVisualizer()
+        updateColors(dt)
+        applyInputs()
+        if (!config.PAUSED) step(dt)
+        render(null)
+    }
+    requestAnimationFrame(update);
 }
 
 function calcDeltaTime() {
@@ -1747,7 +1773,136 @@ window.addEventListener('touchend', e => {
 window.addEventListener('keydown', e => {
   if (e.code === 'KeyP') config.PAUSED = !config.PAUSED
   if (e.key === ' ') splatStack.push(safeParseInt(Math.random() * 20) + 5)
+  if (e.key === 'a')
+      multipleSplatsA();
+  if (e.key === 's')
+      multipleSplatsS();
+  if (e.key === 'd')
+      multipleSplatsD();
+  if (e.key === 'f')
+      multipleSplatsF();
+  if (e.key === 'g')
+      multipleSplatsG();
+  if (e.key === 'j')
+      multipleSplatsJ();
 })
+
+
+function multipleSplatsA () {
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r = 0.5;//*= 10.0;
+        color.g = 0.5;//*= 10.0;
+        color.b = 0.5;//*= 10.0;
+        const x = 0.3 * i + 0.2;
+        const y = 0.2;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = 5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color, 2.1);
+    }
+}
+function multipleSplatsS () {
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 5.0;
+        color.g *= 5.0;
+        color.b *= 5.0;
+        const x = 0.3 * i + 0.2;
+        const y = 0.8;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = -5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 5.0;
+        color.g *= 5.0;
+        color.b *= 5.0;
+        const x = 0.3 * i + 0.2;
+        const y = 0.95;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = -5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+}
+function multipleSplatsD () {
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 10.0;
+        color.g *= 10.0;
+        color.b *= 10.0;
+        const x = 0.2;
+        const y = -0.3 * i + 0.8;
+        const dx = 5000;//1000 * (Math.random() - 0.5);
+        const dy = 0;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+}
+function multipleSplatsF () {
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 10.0;
+        color.g *= 10.0;
+        color.b *= 10.0;
+        const x = 0.8;
+        const y = 0.3 * i + 0.2;
+        const dx = -5000;//1000 * (Math.random() - 0.5);
+        const dy = 0;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+}
+
+function multipleSplatsG () {
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 15.0;
+        color.g *= 15.0;
+        color.b *= 15.0;
+        const x = 0.3 * i + 0.2;
+        const y = 0.8;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = -5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+    for (let i = 0; i < 3/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 15.0;
+        color.g *= 15.0;
+        color.b *= 15.0;
+        const x = 0.3 * i + 0.22;
+        const y = 0.85;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = -5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+    for (let i = 0; i < 2/*amount*/; i++) {
+        const color = generateColor();
+        color.r *= 0.0;
+        color.g *= 0.0;
+        color.b *= 0.0;
+        const x = 0.3 * i + 0.35;
+        const y = 0.15;
+        const dx = 0;//1000 * (Math.random() - 0.5);
+        const dy = 5000;//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color);
+    }
+}
+
+function multipleSplatsJ () {
+    let amount = 10;
+    let step = Math.PI*2/amount;
+    for (let i = 0; i < amount; i++) {
+        const color = generateColor();
+        color.r *= 10.0;
+        color.g *= 10.0;
+        color.b *= 10.0;
+        const x = 0.5 + (0.1*Math.sin(step*i))*(canvas.height / canvas.width);
+        const y = 0.5 + 0.1*Math.cos(step*i);
+        const dx = 3000*Math.sin(step*i);//1000 * (Math.random() - 0.5);
+        const dy = 3000*Math.cos(step*i);//1000 * (Math.random() - 0.5);
+        splat(x, y, dx, dy, color, 0.01);
+    }
+}
 
 function updatePointerDownData(pointer: Pointer, id: number, posX: number, posY: number) {
   pointer.id = id
