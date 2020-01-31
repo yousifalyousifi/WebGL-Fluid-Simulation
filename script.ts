@@ -24,7 +24,11 @@ SOFTWARE.
 */
 
 declare const dat: typeof import('dat.gui')
+import { Keyboard } from "./Keyboard";
+import { gsap } from "gsap";
 import { SongPlayer } from './audio'
+
+var keyb = new Keyboard();
 
 function safeParseInt(x: number) {
   return parseInt(x.toString())
@@ -59,14 +63,14 @@ function dup<T>(val: T): T {
 
 const config = {
   SIM_RESOLUTION: 256,
-  DYE_RESOLUTION: 1024,
+  DYE_RESOLUTION: 128,
   CAPTURE_RESOLUTION: 512,
   DENSITY_DISSIPATION: 1,
   VELOCITY_DISSIPATION: 0.2,
   PRESSURE: 0.8,
   PRESSURE_ITERATIONS: 20,
   CURL: 8,
-  SPLAT_RADIUS: 0.25,
+  SPLAT_RADIUS: 0.03,
   SPLAT_FORCE: 6000,
   SHADING: true,
   SPLAT_COLOR: dup(Shortcuts.Red),
@@ -101,6 +105,7 @@ class Pointer {
   colorUpdates = 0
 }
 
+let roboPointers: Pointer[] = []
 let pointers: Pointer[] = []
 let splatStack: number[] = []
 pointers.push(new Pointer())
@@ -1356,10 +1361,31 @@ function updateKeywords() {
 // Main
 updateKeywords()
 initFramebuffers()
-multipleSplats(safeParseInt(Math.random() * 20) + 5)
+// multipleSplats(safeParseInt(Math.random() * 20) + 5)
 
+var obj = {prop: 10};
+gsap.to(obj, {
+  duration: 5,
+  prop: 200, 
+  ease: "linear",
+  //onUpdate fires each time the tween updates; we'll explain callbacks later.
+  onUpdate: function() {
+    // console.log(obj.prop); //logs the value on each update.
+  }
+});
+///////
+///////
+///////
+///////
+///////
+///////
+///////
+///////
+///////
+///////
+///////
+///////
 let fpsInterval: number;
-let startTime: number;
 let _now: number;
 let then: number;
 let elapsed:  number;
@@ -1367,11 +1393,57 @@ let lastUpdateTime = Date.now();
 let colorUpdateTimer = 0.0;
 startAnimating(999);
 
+let fakePointerPos = {x: 700, y: 350, radius: 250, angle: 0};
+
+
+let tl = gsap.timeline({
+  repeat: 3
+});
+
+function addRoboPointer() {
+  let posX = scaleByPixelRatio(fakePointerPos.x);
+  let posY = scaleByPixelRatio(fakePointerPos.y);
+  let pointer = new Pointer()
+  pointers.push(pointer)
+  updatePointerDownData(pointer, pointers.length, posX, posY)
+
+}
+
+
+addRoboPointer();
+tl.to(fakePointerPos, {
+  duration: 2.5,
+  angle: Math.PI*2,
+  yoyo: false,
+  repeat: -1,
+  ease:"linear",
+  onUpdate: function() {
+    if(config.PAUSED) return
+    let pointer = pointers[1]
+    if (!pointer.down) return
+    // let posX = scaleByPixelRatio(gsap.getProperty(fakePointerPos,"x"));
+    // let posY = scaleByPixelRatio(gsap.getProperty(fakePointerPos,"y"));
+    let posX = scaleByPixelRatio(gsap.getProperty(fakePointerPos,"x")+
+      Math.sin(gsap.getProperty(fakePointerPos,"angle"))*
+      gsap.getProperty(fakePointerPos, "radius"));
+
+
+    let posY = scaleByPixelRatio(gsap.getProperty(fakePointerPos,"y")+
+      Math.cos(gsap.getProperty(fakePointerPos,"angle"))*
+      gsap.getProperty(fakePointerPos, "radius"));
+
+    updatePointerMoveData(pointer, posX, posY
+  }
+});
+
+
+addRoboPointer();
+
+
 //Source: https://stackoverflow.com/a/19772220
 function startAnimating(fps: number) {
     fpsInterval = 1000 / fps;
     then = Date.now();
-    startTime = then;
     update();
 }
 
@@ -1662,6 +1734,7 @@ function splatPointer(pointer: Pointer) {
   let dx = pointer.deltaX * config.SPLAT_FORCE
   let dy = pointer.deltaY * config.SPLAT_FORCE
   splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color)
+
 }
 
 function multipleSplats(amount: number) {
@@ -1771,6 +1844,7 @@ window.addEventListener('touchend', e => {
 })
 
 window.addEventListener('keydown', e => {
+  console.log(e.key, e.code);
   if (e.code === 'KeyP') config.PAUSED = !config.PAUSED
   if (e.key === ' ') splatStack.push(safeParseInt(Math.random() * 20) + 5)
   if (e.key === 'a')
@@ -1785,6 +1859,8 @@ window.addEventListener('keydown', e => {
       multipleSplatsG();
   if (e.key === 'j')
       multipleSplatsJ();
+  if (e.key === 'k')
+      multipleSplatsK();
 })
 
 
@@ -1898,9 +1974,24 @@ function multipleSplatsJ () {
         color.b *= 10.0;
         const x = 0.5 + (0.1*Math.sin(step*i))*(canvas.height / canvas.width);
         const y = 0.5 + 0.1*Math.cos(step*i);
-        const dx = 3000*Math.sin(step*i);//1000 * (Math.random() - 0.5);
-        const dy = 3000*Math.cos(step*i);//1000 * (Math.random() - 0.5);
+        const dx = 50*Math.sin(step*i);//1000 * (Math.random() - 0.5);
+        const dy = 50*Math.cos(step*i);//1000 * (Math.random() - 0.5);
         splat(x, y, dx, dy, color, 0.01);
+    }
+}
+function multipleSplatsK () {
+    let amount = 10;
+    let step = Math.PI*2/amount;
+    for (let i = 0; i < amount; i++) {
+        const color = generateColor();
+        color.r *= 0.0;
+        color.g *= 0.0;
+        color.b *= 0.0;
+        const x = 0.5;
+        const y = 0.5;
+        const dx = 1;
+        const dy = 0;
+        splat(x, y, dx, dy, color, 10);
     }
 }
 
